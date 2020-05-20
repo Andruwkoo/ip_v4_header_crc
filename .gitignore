@@ -1,0 +1,5 @@
+sim/*
+transcript
+vsim.wlf
+modelsim.ini
+*.pdf
