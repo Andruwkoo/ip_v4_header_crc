@@ -22,6 +22,8 @@ module tb_top();
 
   initial begin
     bit [31:0] pkt [];
+    bit [15:0] checksum;
+    int errors;
 
     reset = 0;
     clk = 0;
@@ -31,14 +33,27 @@ module tb_top();
     @(posedge clk);
     reset = 0;
 
-    test_packet(pkt);
-    send_data(pkt);
-    test_packet(pkt);
-    send_data(pkt);
-    test_packet(pkt);
-    send_data(pkt);
-    test_packet(pkt);
-    send_data(pkt);
+    errors = 0;
+    for (int i = 0; i < 1000; i += 1) begin
+      if (i == 0) begin
+        gold_packet(pkt);
+      end else begin
+        random_packet(pkt);
+      end
+      fork
+        send_data(pkt);
+        recv_checksum(checksum);
+      join
+      update_pkt(pkt, checksum);
+      errors += verifying_checksum(pkt);
+    end
+
+    if (errors == 0) begin
+      $display("TESTS PASSED SUCCESSFULLY WITH 0 ERRORS!");
+    end else begin
+      $display("TESTS FAILED WITH %0d ERRORS!", errors);
+    end
+    $stop;
   end
 
   task send_data(bit [31:0] packet []);
@@ -53,7 +68,7 @@ module tb_top();
     mi.d_in_vld = 0;
   endtask
 
-  task test_packet(output bit [31 : 0] packet []);
+  task gold_packet(output bit [31 : 0] packet []);
     bit [31:0] pkt [];
 
     pkt = new[8];
@@ -61,6 +76,45 @@ module tb_top();
 
     packet = pkt;
   endtask
+
+  task random_packet(output bit [31 : 0] packet []);
+    bit [31:0] pkt [];
+    int pkt_size;
+
+    pkt_size = $urandom() % 1024;
+    pkt = new[pkt_size];
+    for (int i = 0; i < pkt_size; i += 1) begin
+      pkt[i] = $urandom();
+    end
+    
+    packet = pkt;
+  endtask
+
+  task recv_checksum(output bit [15:0] checksum);
+    @(posedge clk iff mi.crc_vld == 1);
+    checksum = mi.crc;
+  endtask
+
+  task automatic update_pkt(ref bit [31:0] pkt [], input bit [15:0] checksum);
+    pkt[2][15:0] = checksum;
+  endtask
+  
+  function int verifying_checksum(bit [31:0] pkt []);
+    int sum;
+
+    sum = 0;
+    for (int i = 0; i < 5; i += 1) begin
+      sum += pkt[i][15:0] + pkt[i][31:16];
+    end
+    sum = sum[15:0] + sum[31:16];
+    if (sum == 16'hFFFF) begin
+      // $display(">>> %8tps | Header checksum is correct.", $time());
+      return 0;
+    end else begin
+      $error(">>> %8tps | Header checksum is incorrect.", $time());
+      return 1;
+    end
+  endfunction
 
   always #5ns clk = ~clk;
 
