@@ -34,7 +34,7 @@ module tb_top();
     reset = 0;
 
     errors = 0;
-    for (int i = 0; i < 1000; i += 1) begin
+    for (int i = 0; i < 10000; i += 1) begin
       if (i == 0) begin
         gold_packet(pkt);
       end else begin
@@ -56,14 +56,18 @@ module tb_top();
     $stop;
   end
 
-  task send_data(bit [31:0] packet []);
+  task send_data(bit [31:0] packet [], bit enable_delays = 0);
     mi.start = 1;
     @(posedge clk);
     mi.start = 0;
     for (int i = 0; i < packet.size(); i += 1) begin
+      if (enable_delays == 1) begin
+        repeat($urandom()%10) @(posedge clk);
+      end
       mi.d_in = packet[i];
       mi.d_in_vld = 1;
       @(posedge clk);
+      mi.d_in_vld = 0;
     end
     mi.d_in_vld = 0;
   endtask
@@ -81,7 +85,7 @@ module tb_top();
     bit [31:0] pkt [];
     int pkt_size;
 
-    pkt_size = $urandom() % 1024;
+    pkt_size = ($urandom() % 1019) + 5;
     pkt = new[pkt_size];
     for (int i = 0; i < pkt_size; i += 1) begin
       pkt[i] = $urandom();
@@ -111,6 +115,7 @@ module tb_top();
       // $display(">>> %8tps | Header checksum is correct.", $time());
       return 0;
     end else begin
+      $display("Received packet: %p", pkt);
       $error(">>> %8tps | Header checksum is incorrect.", $time());
       return 1;
     end

@@ -35,7 +35,7 @@ begin
         elsif rising_edge(clk) then
             if start = '1' and work = '0' then
                 work  <= '1';
-            elsif cnt = 4 then
+            elsif cnt = 4 and d_in_vld = '1' then
                 work  <= '0';
                 carry <= '1';
             else
@@ -44,7 +44,7 @@ begin
 
             if start = '1' and work = '0' then
                 cnt <= (others => '0');
-            elsif work = '1' then
+            elsif work = '1' and d_in_vld = '1' then
                 cnt <= cnt + x"1";
             end if;
         end if;
@@ -60,14 +60,14 @@ begin
 
             if work = '0' then
                 acc <= (others => '0');
-            elsif cnt /= 2 then
+            elsif cnt /= 2 and d_in_vld = '1' then
                 acc <= acc + d_in(15 downto 0) + d_in(31 downto 16);
-            else 
+            elsif d_in_vld = '1' then
                 acc <= acc + d_in(31 downto 16);
             end if;
 
             if carry = '1' then
-                tmp_carry_acc := ext(acc(15 downto 0) + acc(19 downto 16), tmp_carry_acc'length);
+                tmp_carry_acc := ext(("0" & acc(15 downto 0)) + acc(19 downto 16), tmp_carry_acc'length);
                 carry_acc <= tmp_carry_acc(15 downto 0) + tmp_carry_acc(16);
             end if;
 
