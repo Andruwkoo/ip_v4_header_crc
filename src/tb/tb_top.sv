@@ -34,14 +34,14 @@ module tb_top();
     reset = 0;
 
     errors = 0;
-    for (int i = 0; i < 10000; i += 1) begin
+    for (int i = 0; i < 1000; i += 1) begin
       if (i == 0) begin
         gold_packet(pkt);
       end else begin
         random_packet(pkt);
       end
       fork
-        send_data(pkt);
+        send_data(pkt, 1);
         recv_checksum(checksum);
       join
       update_pkt(pkt, checksum);
